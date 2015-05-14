@@ -15,9 +15,13 @@
             android:text="Start Server"
             android:onClick="startServer"/>
     
-    <TextView
-            android:id="@+id/console"
+    <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
+            android:layout_height="match_parent">
+        <TextView
+                android:id="@+id/console"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+    </ScrollView>
 
 </LinearLayout>
