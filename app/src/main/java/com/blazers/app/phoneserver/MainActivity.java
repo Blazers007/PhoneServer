@@ -7,6 +7,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 
@@ -77,6 +78,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             console.setText(console.getText().toString() + "\r\n" + intent.getStringExtra("msg"));
+            ((ScrollView)console.getParent()).scrollTo(0, console.getMeasuredHeight());
         }
     }
 

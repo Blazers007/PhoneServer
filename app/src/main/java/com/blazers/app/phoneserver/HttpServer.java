@@ -3,8 +3,10 @@ package com.blazers.app.phoneserver;
 import android.app.Service;
 import android.content.Intent;
 import android.os.*;
+import android.util.Log;
 import com.blazers.app.phoneserver.Util.GetApks;
 import com.blazers.app.phoneserver.Util.GetSDCardFiles;
+import com.blazers.app.phoneserver.Util.HtmlTemplate;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -91,9 +93,11 @@ public class HttpServer extends Service {
                     String line = reader.readLine();
 //                    method = line.substring(0, 4).trim();
                     resource = line.substring(line.indexOf('/'), line.lastIndexOf('/') - 5);
+                    Log.e("Resource", " ---> " + resource);
+                    /* 路由部分 */
                     if (resource.equals("/")) {
                         /* Index */
-                        doGetRoot(reader, writer);
+                        doGetIndex(reader, writer);
                     } else if (resource.startsWith("/files")) {
                         /* GetFiles */
                         String root;
@@ -115,6 +119,14 @@ public class HttpServer extends Service {
                         /* 获取已安装的文件列表 */
                         String icon = resource.substring(resource.indexOf("/icon/")+6);
                         doGetApkIcon(icon, outputStream);
+                    } else if (resource.contains("/asset/")) {
+                        /* 获取已安装的文件列表 */
+                        String asset = resource.substring(resource.indexOf("/asset/")+7);
+                        doGetFileAsset(asset, outputStream);
+                    }else if (resource.contains("/system/")) {
+                        /* 获取已安装的文件列表 */
+                        String system = resource.substring(resource.indexOf("/system/")+8);
+                        doGetFileSystem(system, outputStream);
                     } else {
                         writer.println("HTTP/1.0 200 OK");//返回应答消息,并结束应答
                         writer.println("Content-Type:text/html;charset=" + "utf-8");
@@ -141,7 +153,7 @@ public class HttpServer extends Service {
         }
     }
 
-    void doGetRoot(BufferedReader reader, PrintWriter writer) throws IOException {
+    void doGetIndex(BufferedReader reader, PrintWriter writer) throws IOException {
         sendMessage("Method : GET");
         /* Get Message And Judge*/
         String request = "";
@@ -158,13 +170,18 @@ public class HttpServer extends Service {
         writer.println();// 根据 HTTP 协议, 空行将结束头信息
         /* Write Body */
         String body =
-                "<html><head><title>test server</title></head>"
+                "<html>"
+                        + HtmlTemplate.getHead()
                         +"<body>"
-                            +"<h1>Hello world</h1>"
-                            +"<a href=\"/files\">Index SDCard Files</a>"
-                            +"<a href=\"/apks\">Index Installed Applications</a>"
+                        +   "<nav class=\"navbar navbar-black-example nav-fullwidth\">"
+                        +       "<ul>"
+                        +           "<li><a href=\"/files\">SD Card</a></li>"
+                        +           "<li><a href=\"/apks\">Index Installed Applications</a></li>"
+                        +       "<ul"
+                        +   "</nav>"
                         +"</body>"
                 +"</html>";
+
         writer.println(body);
         writer.flush();
     }
@@ -195,17 +212,27 @@ public class HttpServer extends Service {
                 files += "<a href=\"" + "/files/" + file.getAbsolutePath() +"\">" + file.getName() + "</a><p>文件</p></br>";
             }
         }
+
         String body =
-                "<html><head><title>Files Server</title></head>"
-                        +"<body>"
-                            +files
-                        +"</body>"
-                        +"</html>";
+                 "<html>"
+                + HtmlTemplate.getHead()
+                +   "<body>"
+                +   "<nav class=\"navbar navbar-black-example nav-fullwidth\">"
+                +       "<ul>"
+                +           "<li><span>SD Card</span></li>"
+                +           "<li><a href=\"/apks\">Index Installed Applications</a></li>"
+                +       "<ul"
+                +   "</nav>"
+                +       files
+                +   "</body>"
+                +"</html>";
         writer.println(body);
         writer.flush();
     }
 
-    void doTransferFile(File file, OutputStream outputStream) {
+
+    /*  以下方法均不是输出整个页面 */
+   void doTransferFile(File file, OutputStream outputStream) {
         try {
             FileInputStream fileInputStream = new FileInputStream(file);
             byte[] buffer = new byte[1024 * 10];
@@ -233,34 +260,65 @@ public class HttpServer extends Service {
         String apks = "";
         for(GetApks.APKInfo info : new GetApks().getInstalled(this)) {
             apks += "<tr>"
-                    +   "<td>"
+                    +   "<td class=\"width-50\">"
                     +        info.name
                     +   "</td>"
-                    +   "<td>"
+                    +   "<td class=\"width-25\">"
                     +        info.versionName
                     +   "</td>"
-                    +   "<td>"
-                    +        info.versionCode
-                    +   "</td>"
-                    +   "<td>"
-                    +        "<img src=\"/icon/" +  info.name + "\" />"
+                    +   "<td class=\"width-25\">"
+                    +        "<img class=\"icon\" src=\"/icon/" +  info.name + "\" />"
                     +   "</td>"
                     +"</tr>";
         }
         String body =
-                "<html><head><title>Files Server</title></head>"
+                "<html>"
+                        + HtmlTemplate.getHead()
                         +"<body>"
-                        +   "<table>"
+                        +   "<nav class=\"navbar navbar-black-example nav-fullwidth\">"
+                        +       "<ul>"
+                        +           "<li><a href=\"/files\">SD Card</a></li>"
+                        +           "<li><span>Index Installed Applications</span></li>"
+                        +       "<ul"
+                        +   "</nav>"
+                        +   "<table class=\"table-bordered table-stripped\">"
+                        +       "<thead><tr><th>包名</th><th>版本号</th><th>图标</th></tr></thead>"
                         +       apks
                         +   "</table>"
                         +"</body>"
-                        +"</html>";
+                +"</html>";
         writer.println(body);
         writer.flush();
     }
 
-    void doGetImageOnDisk(String path, OutputStream outputStream) {
+    void doGetFileOnDisk(String path, OutputStream outputStream) {
         /* 可以用上面的方法代替 */
+
+    }
+
+    void doGetFileAsset(String describe, OutputStream outputStream) {
+        /* Asset中的文件 */
+        try {
+            InputStream inputStream = getAssets().open(describe);
+            byte[] buffer = new byte[1024 * 10];
+            int length;
+            while(true) {
+                length = inputStream.read(buffer);
+                if (length == -1)
+                    break;
+                outputStream.write(buffer, 0, length);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    void doGetFileSystem(String describe, OutputStream outputStream) {
+        /* 系统运行时候的文件 */
+    }
+
+    void doGetScreenSnap(OutputStream outputStream) {
+
     }
 
     void doGetApkIcon(String describe, OutputStream outputStream) {
@@ -272,9 +330,6 @@ public class HttpServer extends Service {
         }
     }
 
-    void doGetImageSystem(String describe, OutputStream outputStream) {
-        /* 并非文件系统上的文件 必须通过其他的方式来传输 如 Drawable */
-    }
 
     /* 发送系统信息到控制台 */
     private void sendMessage(String msg) {

@@ -23,6 +23,13 @@
         <service
                 android:name=".HttpServer"
                 android:process=":remote"/>
+        <!-- Android ASL android screenshot library-->
+        <service android:name="pl.polidea.asl.ScreenshotService">
+            <intent-filter>
+                <action android:name="pl.polidea.asl.ScreenshotService.BIND" />
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>
